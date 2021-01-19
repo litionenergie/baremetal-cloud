@@ -4,7 +4,7 @@ ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 cd $ROOT_DIR
 echo Assuming $ROOT_DIR as root directory of baremetal-cloud
 
-curl -s -k -L http://git.io/bootstrap-rvm-bundler | bash -s
+curl -L https://raw.github.com/miguno/ruby-bootstrap/master/ruby-bootstrap.sh | bash -s
 cd $ROOT_DIR
 rvm install `cat .ruby-version`
 cd $ROOT_DIR
