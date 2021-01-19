@@ -44,7 +44,7 @@ GEM
     i18n (1.8.7)
       concurrent-ruby (~> 1.0)
     json (2.5.1)
-    minitest (5.14.3)
+    minitest (5.11.3)
     multi_xml (0.6.0)
     rake (13.0.3)
     thor (1.0.1)
@@ -54,12 +54,13 @@ GEM
     zeitwerk (2.4.2)
 
 PLATFORMS
-  ruby
+  universal-darwin-20
 
 DEPENDENCIES
   activesupport
   hetzner-api!
   leaseweb-rest-api!
+  minitest (= 5.11.3)
   ovh-rest!
   rake
   soyoustart-rest!

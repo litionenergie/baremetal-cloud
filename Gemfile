@@ -9,3 +9,4 @@ gem 'leaseweb-rest-api', github: 'liquidm/leaseweb-rest-api', branch: 'productio
 # Support libraries
 gem 'rake'
 gem 'activesupport'
+gem 'minitest', '5.11.3'
