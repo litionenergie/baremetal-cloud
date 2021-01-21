@@ -97,7 +97,7 @@ chef_license 'accept'
 }.lstrip
         f.flush
         scp(config[:ipv4],f.path,'/etc/chef/client.rb',true)
-        remote_sudo(config[:ipv4], "chef-client -o bash"}, true)
+        remote_sudo(config[:ipv4], "chef-client -o bash", true)
       end
     end
 
