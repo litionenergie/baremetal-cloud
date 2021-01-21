@@ -31,9 +31,20 @@ begin
         . onhost/disklayout/#{args.disklayout}
         . onhost/install/#{args.install_script || 'ubuntu-focal'}
         mkdir ${BAREMETAL_ROOT}/root/.ssh
-        chmod 700 ${BAREMETAL_ROOT}/root/.ssh
       }, true)
       scp(config[:ipv4], "#{PRIVATE_SSH_KEY}.pub", "/mnt/baremetal/root/.ssh/authorized_keys", true)
+      scp(config[:ipv4], "#{PRIVATE_SSH_KEY}", "/mnt/baremetal/root/.ssh/#{File.basename(PRIVATE_SSH_KEY)}", true)
+      scp(config[:ipv4], "#{PRIVATE_SSH_KEY}.pub", "/mnt/baremetal/root/.ssh/#{File.basename(PRIVATE_SSH_KEY)}.pub", true)
+
+      # set correct rights, sshd is picky
+      remote_sudo(config[:ipv4], %Q{
+        chmod 700 /mnt/baremetal/root/.ssh
+        chmod 600 /mnt/baremetal/root/.ssh/#{File.basename(PRIVATE_SSH_KEY)}
+        chmod 644 /mnt/baremetal/root/.ssh/#{File.basename(PRIVATE_SSH_KEY)}.pub
+        chmod 644 /mnt/baremetal/root/.ssh/authorized_keys
+      }, true)
+
+      # can't use remove_sudo here, as systemd kills the ssh session and that's a fatal error
       sh %Q{ssh #{ssh_opts} root@#{config[:ipv4]} reboot; true}
       wait_for_ssh(config[:ipv4])
       puts "If all went right, your server is ready now"
