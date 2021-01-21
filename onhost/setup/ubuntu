@@ -18,9 +18,6 @@ rm -f ${BAREMETAL_ROOT}/etc/resolv.conf
 cp -f /etc/resolv.conf ${BAREMETAL_ROOT}/etc/resolv.conf
 
 # ssh
-mkdir ${BAREMETAL_ROOT}/root/.ssh
-chmod 700 ${BAREMETAL_ROOT}/root/.ssh/
-cp -f /root/.ssh/authorized* ${BAREMETAL_ROOT}/root/.ssh
 spawn_chroot "ssh-keygen -A"
 
 # timezone

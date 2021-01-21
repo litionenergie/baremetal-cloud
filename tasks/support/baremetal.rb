@@ -32,7 +32,6 @@ def baremetals
     h[File.basename(k)] = YAML.load_file(k) rescue {}
   end
 
-  puts "#{STATEDIR}/hosts/*"
   Dir.glob("#{STATEDIR}/hosts/*").each{|h| state[h] }
 
   state
@@ -180,48 +179,4 @@ def baremetal_rescue(hostparam)
       sleep wait_time
     end
   end
-end
-
-def custom_install(hostparam, image, revision, disklayout)
-  host = baremetal_by_human_input(hostparam)
-  ssh_opts = %Q{-i #{PRIVATE_SSH_KEY} -oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oGlobalKnownHostsFile=/dev/null}
-  revision = revision || "master"
-  disklayout = disklayout || "single-disk"
-
-  raise "needs a host " unless host
-  raise "needs an image" unless image
-
-  if (File.exist?("../baremetal-state/images/#{image}"))
-    image_support_files = File.expand_path("../baremetal-state/images/#{image}")
-  else
-    raise "image support files missing"
-  end
-
-  # copy image support files
-  sh "scp #{ssh_opts} -r #{image_support_files} root@#{host[:ipv4]}:"
-  # check if image dir has been copied
-  sh "ssh #{ssh_opts} root@#{host[:ipv4]} [ -d /root/#{image} ] && echo 'image dir exists' || echo 'image dir does not exist'"
-
-  script_path = File.join('', 'root', image)
-  sh %{ssh #{ssh_opts} root@#{host[:ipv4]} `which test` -e #{script_path}} do |ok, _|
-    raise "script path does not exist on destination machine" unless ok
-  end
-
-  env_vars = {
-      custom_squash_fs_image_revision: revision,
-      custom_squash_fs_image_script: File.join(script_path, 'install.sh'),
-  }.map{|k, v| "export #{k.to_s.upcase}=#{v}"}
-
-  cmd_file = File.join(Dir.tmpdir(), "baremetal-#{host[:ipv4]}")
-  File.open(cmd_file, 'w') do |f|
-    env_vars.each do |env|
-      f.puts env
-    end
-    f.puts ". onhost/disklayout/#{disklayout}"
-    f.puts ". onhost/install/ubuntu-bionic"
-    f.puts "shutdown -r 1"
-  end
-
-  sh %Q{cat #{cmd_file}| ssh #{ssh_opts} root@#{host[:ipv4]} /bin/bash -l -s}
-
 end

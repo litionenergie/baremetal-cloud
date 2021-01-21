@@ -9,15 +9,11 @@ begin
       baremetals_persist(baremetal_scan_isps(args.provider))
     end
 
-    desc "check configuration state of of baremetals"
-    task :check_config do |t|
-      metals = baremetals
-      metals.each do |host_id, host|
-        puts ">>>  #{host_id} - #{host[:ipv4]}"
-        ssh_detect(host)
-        pp host[:fqdn]
+    desc "list all known hosts (use scan_isps to find them)"
+    task :list_hosts do |t|
+      baremetals.each do |host,config|
+        puts "#{host}:\t#{config[:ipv4]}"
       end
-      baremetals_persist(metals)
     end
 
     desc "put host into rescue"
@@ -25,44 +21,28 @@ begin
       baremetal_rescue(args.host)
     end
 
-    desc "puts rescue into tmux"
-    task :tmux_rescue, :hostparam do |t, args|
-      host = baremetal_by_human_input(args.hostparam)
-
-      sh %Q{tmux new-window -t baremetal -n "#{host[:isp][:id]}"}
-      sh %Q{tmux send-keys -t baremetal "cd #{ROOT}; rake baremetal:rescue[#{host[:id] || host[:ipv4]}]"}
-      sh %Q{tmux send-keys -t baremetal Enter}
-    end
-
-    desc "bootstrap in tmux"
-    task :tmux_bootstrap, :hostparam, :disklayout do |t, args|
+    desc "bootstrap a node"
+    task :bootstrap, :host, :disklayout, :install_script do |t, args|
       throw "needs a disklayout" unless args.disklayout
-      host = baremetal_by_human_input(args.hostparam)
+      config = baremetal_by_human_input(args.host)
 
       require 'tmpdir'
-      cmd_file = File.join(Dir.tmpdir(), "baremetal-#{host[:ipv4]}")
+      cmd_file = File.join(Dir.tmpdir(), "baremetal-#{config[:ipv4]}")
       File.open(cmd_file, 'w') do |f|
         f.puts ". onhost/disklayout/#{args.disklayout}"
-        f.puts ". onhost/install/ubuntu-bionic"
-        f.puts "reboot"
+        f.puts ". onhost/install/#{args.install_script || 'ubuntu-focal'}"
+        f.puts "mkdir ${BAREMETAL_ROOT}/root/.ssh"
+        f.puts "chmod 700 ${BAREMETAL_ROOT}/root/.ssh"
       end
 
-      ssh_opts = %Q{-l root -i #{PRIVATE_SSH_KEY} -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oGlobalKnownHostsFile=/dev/null}
-      sh %Q{tmux new-window -t baremetal -n "#{host[:isp][:id]}"}
-      sh %Q{tmux send-keys -t baremetal "cd #{ROOT}; rake baremetal:rescue[#{host[:ipv4]}]; cat #{cmd_file}| ssh #{ssh_opts} #{host[:ipv4]} /bin/bash -l -s"}
-      sh %Q{tmux send-keys -t baremetal Enter}
-    end
+      ssh_opts = %Q{-i #{PRIVATE_SSH_KEY} -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oGlobalKnownHostsFile=/dev/null}
 
-    desc "list unhandled"
-    task :unhandled do |t|
-      baremetals.each do |host_id, host|
-        puts host_id unless host[:fqdn]
-      end
-    end
-
-    desc "bootstrap with custom image"
-    task :custom_bootstrap, :hostparam, :image, :revision, :disk_layout do |t, args|
-      custom_install(args[:hostparam], args[:image], args[:revision], args[:disk_layout])
+      sh %Q{cd #{ROOT}; rake baremetal:rescue[#{config[:ipv4]}]; cat #{cmd_file}| ssh #{ssh_opts} root@#{config[:ipv4]} /bin/bash -l -s}
+      sh %Q{scp #{ssh_opts} #{PRIVATE_SSH_KEY}.pub root@#{config[:ipv4]}:/mnt/baremetal/root/.ssh/authorized_keys}
+      sh %Q{ssh #{ssh_opts} root@#{config[:ipv4]} chmod 644 /mnt/baremetal/root/.ssh/authorized_keys}
+      sh %Q{ssh #{ssh_opts} root@#{config[:ipv4]} reboot; true}
+      wait_for_ssh(config[:ipv4])
+      puts "If all went right, your server is ready now"
     end
 
     desc "select ubuntu kernel to be installed during bootstrap"

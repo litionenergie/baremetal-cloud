@@ -51,7 +51,7 @@ def wait_for_ssh(fqdn)
   print "waiting for ssh to be accessible "
   loop do
     print "."
-    system("nmap -p 22 -sT -Pn #{fqdn} | grep 'open  ssh' &> /dev/null")
+    system("nmap -p 22 -sT #{fqdn} | grep 'open  ssh' &> /dev/null")
     break if $?.exitstatus == 0
     sleep 5
   end
