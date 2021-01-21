@@ -26,7 +26,8 @@ echo "UTC" > ${BAREMETAL_ROOT}/etc/timezone
 
 # make apt operational and remove unnecessary packages
 spawn_chroot "apt-get update"
-spawn_chroot "apt-get remove -y cloud-guest-utils rsyslog lxcfs open-iscsi"
+spawn_chroot "apt-get remove -y cloud-guest-utils rsyslog lxcfs open-iscsi snapd accountsservice"
+spawn_chroot "apt autoremove -y"
 spawn_chroot "DEBIAN_FRONTEND=noninteractive apt-get upgrade -y"
 
 # ensure services
