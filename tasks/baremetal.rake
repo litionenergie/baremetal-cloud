@@ -26,20 +26,14 @@ begin
       throw "needs a disklayout" unless args.disklayout
       config = baremetal_by_human_input(args.host)
 
-      require 'tmpdir'
-      cmd_file = File.join(Dir.tmpdir(), "baremetal-#{config[:ipv4]}")
-      File.open(cmd_file, 'w') do |f|
-        f.puts ". onhost/disklayout/#{args.disklayout}"
-        f.puts ". onhost/install/#{args.install_script || 'ubuntu-focal'}"
-        f.puts "mkdir ${BAREMETAL_ROOT}/root/.ssh"
-        f.puts "chmod 700 ${BAREMETAL_ROOT}/root/.ssh"
-      end
-
-      ssh_opts = %Q{-i #{PRIVATE_SSH_KEY} -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oGlobalKnownHostsFile=/dev/null}
-
-      sh %Q{cd #{ROOT}; rake baremetal:rescue[#{config[:ipv4]}]; cat #{cmd_file}| ssh #{ssh_opts} root@#{config[:ipv4]} /bin/bash -l -s}
-      sh %Q{scp #{ssh_opts} #{PRIVATE_SSH_KEY}.pub root@#{config[:ipv4]}:/mnt/baremetal/root/.ssh/authorized_keys}
-      sh %Q{ssh #{ssh_opts} root@#{config[:ipv4]} chmod 644 /mnt/baremetal/root/.ssh/authorized_keys}
+      baremetal_rescue(args.host)
+      remote_sudo(config[:ipv4], %Q{
+        . onhost/disklayout/#{args.disklayout}
+        . onhost/install/#{args.install_script || 'ubuntu-focal'}
+        mkdir ${BAREMETAL_ROOT}/root/.ssh
+        chmod 700 ${BAREMETAL_ROOT}/root/.ssh
+      }, true)
+      scp(config[:ipv4], "#{PRIVATE_SSH_KEY}.pub", "/mnt/baremetal/root/.ssh/authorized_keys", true)
       sh %Q{ssh #{ssh_opts} root@#{config[:ipv4]} reboot; true}
       wait_for_ssh(config[:ipv4])
       puts "If all went right, your server is ready now"

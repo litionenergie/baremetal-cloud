@@ -166,12 +166,10 @@ def baremetal_rescue(hostparam)
   puts "Using #{host.to_yaml}"
 
   baremetal_isps[host[:isp][:name]].rescue(host)
-  ssh_opts = %Q{-oBatchMode=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oGlobalKnownHostsFile=/dev/null}
   loop do
     begin
-      sh "scp -i #{PRIVATE_SSH_KEY} #{ssh_opts} -r #{ROOT}/onhost root@#{host[:ipv4]}:."
-      sh "scp -i #{PRIVATE_SSH_KEY} #{ssh_opts} -r #{ROOT}/../baremetal-state/hosts/#{host[:id]} root@#{host[:ipv4]}:/root/host_info"
-      sh "ssh -i #{PRIVATE_SSH_KEY} #{ssh_opts} root@#{host[:ipv4]} onhost/setup/rescue-env"
+      scp(host[:ipv4], "#{ROOT}/onhost", '.', true)
+      remote_sudo(host[:ipv4], 'onhost/setup/rescue-env', true)
       break
     rescue
       wait_time = 120
